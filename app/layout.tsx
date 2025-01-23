@@ -1,35 +1,43 @@
+"use client";
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Nunito } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/Navbar";
+import { create } from "zustand";
+import { persist, PersistOptions } from "zustand/middleware";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+const geistSans = Geist({ subsets: ["latin"] });
+const geistMono = Geist_Mono({ subsets: ["latin"] });
+const nunito = Nunito({ subsets: ["latin"] });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "TripleF CMS",
-  description: "Content Management System",
-};
+const useStore = create(
+  persist(
+    (set) => ({
+      darkMode: false,
+      toggleDarkMode: () =>
+        set((state: { darkMode: boolean }) => ({ darkMode: !state.darkMode })),
+    }),
+    {
+      name: "dark-mode", // name of the item in localStorage
+      storage: typeof window !== "undefined" ? localStorage : undefined, // Use storage instead of getStorage
+    } as PersistOptions<{ darkMode: boolean }, { darkMode: boolean }>
+  )
+);
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { darkMode } = useStore();
+
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang="en" className={darkMode ? "dark" : ""}>
+      <body className={`${nunito.className} antialiased`}>
         <Navbar />
-        <div className="pt-16">{children}</div>
+        {children}
       </body>
     </html>
   );
