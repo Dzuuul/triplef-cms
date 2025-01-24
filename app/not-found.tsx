@@ -72,8 +72,8 @@ export default function NotFound() {
           ${isDarkMode ? "text-gray-300" : "text-gray-600"}
         `}
         >
-          Oops! The page you're looking for seems to have wandered off into the
-          digital wilderness.
+          Oops! The page you&apos;re looking for seems to have wandered off into
+          the digital wilderness.
         </p>
 
         <div className="flex flex-col sm:flex-row justify-center gap-4">

@@ -1,8 +1,113 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useDarkModeStore } from "../store/darkModeStore";
 import Button from "../components/Button";
+import Tnc from "../components/Tnc";
+import { findUser, isEmailRegistered, registerUser } from "../utils/dummyUsers";
+import Image from "next/image";
+
+const LoginBannerSlider = ({ isDarkMode }: { isDarkMode: boolean }) => {
+  const bannerImages = [
+    {
+      src: "/login-banner.png",
+      title: "Secure Login",
+      description: "Protect your account with advanced security",
+    },
+    {
+      src: "/login-banner-2.png",
+      title: "Easy Access",
+      description: "Seamless login experience",
+    },
+    {
+      src: "/login-banner-3.png",
+      title: "Smart Authentication",
+      description: "Advanced verification methods",
+    },
+  ];
+
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex(
+        (prevIndex) => (prevIndex + 1) % bannerImages.length
+      );
+    }, 5000); // Change image every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [bannerImages.length]);
+
+  return (
+    <div
+      className={`
+        hidden md:flex w-1/2 items-center justify-center 
+        ${isDarkMode ? "bg-gray-800" : "bg-blue-50"}
+        h-full relative overflow-hidden
+      `}
+    >
+      {bannerImages.map((image, index) => (
+        <div key={image.src} className="absolute w-full h-full">
+          <Image
+            src={image.src}
+            alt={`Login Banner ${index + 1}`}
+            layout="fill"
+            objectFit="cover"
+            className={`
+              absolute w-full h-full transition-all duration-1000 ease-in-out
+              ${
+                index === currentImageIndex
+                  ? "opacity-100 scale-105"
+                  : "opacity-0 scale-100"
+              }
+            `}
+          />
+          <div
+            className={`
+              absolute inset-0 bg-gradient-to-r from-black/20 to-transparent flex flex-col 
+              justify-end items-start p-8 text-white transition-opacity duration-1000
+              ${index === currentImageIndex ? "opacity-100" : "opacity-0"}
+            `}
+          >
+            <h2
+              className={`
+              text-3xl font-bold mb-2 text-white
+              transform transition-transform duration-1000 ease-in-out
+            `}
+            >
+              {image.title}
+            </h2>
+            <p
+              className={`
+              text-lg max-w-md text-white text-opacity-90
+            `}
+            >
+              {image.description}
+            </p>
+          </div>
+        </div>
+      ))}
+
+      {/* Navigation Dots */}
+      <div className="absolute bottom-4 flex space-x-2 z-10">
+        {bannerImages.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrentImageIndex(index)}
+            className={`
+              w-3 h-3 rounded-full transition-all duration-300
+              ${
+                index === currentImageIndex
+                  ? "bg-blue-500 scale-125"
+                  : "bg-gray-300 hover:bg-blue-300"
+              }
+            `}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const LoginRegisterPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,23 +119,53 @@ const LoginRegisterPage = () => {
   const [registerPassword, setRegisterPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
-  const { isDarkMode, toggleDarkMode } = useDarkModeStore();
+  const { isDarkMode } = useDarkModeStore();
 
-  const handleLoginSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log("Login attempt:", loginEmail);
+
+    const user = findUser(loginEmail, loginPassword);
+
+    if (user) {
+      alert(`Login successful! Welcome, ${user.fullName}`);
+      // Here you would typically set authentication state or redirect
+    } else {
+      alert("Invalid email or password");
+    }
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle registration logic here
+
+    // Basic validation
     if (registerPassword !== confirmPassword) {
-      alert("Passwords do not match!");
+      alert("Passwords do not match");
       return;
     }
-    console.log("Registration attempt:", fullName, registerEmail);
+
+    if (!agreedToTerms) {
+      alert("Please agree to the Terms and Conditions");
+      return;
+    }
+
+    // Check if email already exists
+    if (isEmailRegistered(registerEmail)) {
+      alert("Email already registered");
+      return;
+    }
+
+    // Register new user
+    registerUser({
+      email: registerEmail,
+      password: registerPassword,
+      fullName: fullName,
+    });
+
+    alert(`Registration successful! Welcome, ${fullName}`);
+    // Switch to login form after successful registration
+    setIsLogin(true);
   };
 
   return (
@@ -147,7 +282,7 @@ const LoginRegisterPage = () => {
                 // Register Form
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold mb-6">
-                    Create Your Account!
+                    Create an Account
                   </h1>
                   <form onSubmit={handleRegisterSubmit}>
                     <div className="mb-4">
@@ -242,54 +377,52 @@ const LoginRegisterPage = () => {
                         required
                       />
                     </div>
-                    <div className="mb-6">
-                      <label className="flex items-center text-sm md:text-base">
-                        <input
-                          type="checkbox"
-                          checked={agreedToTerms}
-                          onChange={(e) => setAgreedToTerms(e.target.checked)}
-                          className={`mr-2 ${
-                            isDarkMode ? "text-gray-400" : "text-gray-600"
-                          }`}
-                        />
-                        I agree to the Terms & Conditions
+                    <div className="mb-4 flex items-center">
+                      <input
+                        type="checkbox"
+                        id="agreedToTerms"
+                        checked={agreedToTerms}
+                        onChange={() => setAgreedToTerms(!agreedToTerms)}
+                        className="mr-2"
+                        required
+                      />
+                      <label htmlFor="agreedToTerms" className="text-sm">
+                        I agree to the Terms and Conditions
                       </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowTerms(true)}
+                        className={`
+                          ml-2 text-xs 
+                          ${
+                            isDarkMode
+                              ? "text-blue-400 hover:text-blue-300"
+                              : "text-blue-600 hover:text-blue-500"
+                          }
+                        `}
+                      >
+                        View
+                      </button>
                     </div>
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="md"
-                      fullWidth
-                      disabled={!agreedToTerms}
-                    >
-                      Create Account
+                    <Button type="submit" variant="primary" size="md" fullWidth>
+                      Register
                     </Button>
                   </form>
+
+                  {/* Modal TNC*/}
+                  {showTerms && (
+                    <Tnc
+                      onClose={() => setShowTerms(false)}
+                      onAccept={() => setAgreedToTerms(true)}
+                    />
+                  )}
                 </div>
               )}
-
-              <div className="mt-4 text-center">
-                <Button variant="secondary" size="md" onClick={toggleDarkMode}>
-                  {isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                </Button>
-              </div>
             </div>
           </div>
 
-          {/* Banner Image Container - Right Side */}
-          <div
-            className={`
-              hidden md:flex w-1/2 items-center justify-center 
-              ${isDarkMode ? "bg-gray-800" : "bg-blue-50"}
-              h-full
-            `}
-          >
-            <img
-              src="/login-banner.png"
-              alt="Login Banner"
-              className="w-full h-full object-cover"
-            />
-          </div>
+          {/* Banner Slider Container - Right Side */}
+          <LoginBannerSlider isDarkMode={isDarkMode} />
         </div>
       </div>
     </div>
